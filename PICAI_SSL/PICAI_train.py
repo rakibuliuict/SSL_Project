@@ -205,10 +205,10 @@ def pre_train(args, snapshot_path):
     model2 = create_ResVnet()
 
     c_batch_size = 2
-    trainset_lab_a = PICAIDataset(train_data_path, "/content/drive/MyDrive/SemiSL/Code/PICAI_SSL/Basecode/Datasets/picai/data_split", split='train_lab', logging=logging)
+    trainset_lab_a = PICAIDataset(train_data_path, "/content/drive/MyDrive/SemiSL/Code/SSL_Project/PICAI_SSL/Datasets/picai/data_split", split='train_lab', logging=logging)
     lab_loader_a = DataLoader(trainset_lab_a, batch_size=c_batch_size, shuffle=False, num_workers=0, drop_last=True)
 
-    trainset_lab_b = PICAIDataset(train_data_path, "/content/drive/MyDrive/SemiSL/Code/PICAI_SSL/Basecode/Datasets/picai/data_split", split='train_lab', reverse=True, logging=logging)
+    trainset_lab_b = PICAIDataset(train_data_path, "/content/drive/MyDrive/SemiSL/Code/SSL_Project/PICAI_SSL/Datasets/picai/data_split", split='train_lab', reverse=True, logging=logging)
     lab_loader_b = DataLoader(trainset_lab_b, batch_size=c_batch_size, shuffle=False, num_workers=0, drop_last=True)
 
 
@@ -300,16 +300,16 @@ def self_train(args, pre_snapshot_path, self_snapshot_path):
 
 
     c_batch_size = 2
-    trainset_lab_a = PICAIDataset(train_data_path, "/content/drive/MyDrive/SemiSL/Code/PICAI_SSL/Basecode/Datasets/picai/data_split", split='train_lab', logging=logging)
+    trainset_lab_a = PICAIDataset(train_data_path, "/content/drive/MyDrive/SemiSL/Code/SSL_Project/PICAI_SSL/Datasets/picai/data_split", split='train_lab', logging=logging)
     lab_loader_a = DataLoader(trainset_lab_a, batch_size=c_batch_size, shuffle=False, num_workers=0, drop_last=True)
 
-    trainset_lab_b = PICAIDataset(train_data_path, "/content/drive/MyDrive/SemiSL/Code/PICAI_SSL/Basecode/Datasets/picai/data_split", split='train_lab', reverse=True, logging=logging)
+    trainset_lab_b = PICAIDataset(train_data_path, "/content/drive/MyDrive/SemiSL/Code/SSL_Project/PICAI_SSL/Datasets/picai/data_split", split='train_lab', reverse=True, logging=logging)
     lab_loader_b = DataLoader(trainset_lab_b, batch_size=c_batch_size, shuffle=False, num_workers=0, drop_last=True)
 
-    trainset_unlab_a = PICAIDataset(train_data_path, "/content/drive/MyDrive/SemiSL/Code/PICAI_SSL/Basecode/Datasets/picai/data_split", split='train_unlab', logging=logging)
+    trainset_unlab_a = PICAIDataset(train_data_path, "/content/drive/MyDrive/SemiSL/Code/SSL_Project/PICAI_SSL/Datasets/picai/data_split", split='train_unlab', logging=logging)
     unlab_loader_a = DataLoader(trainset_unlab_a, batch_size=c_batch_size, shuffle=False, num_workers=0, drop_last=True)
 
-    trainset_unlab_b = PICAIDataset(train_data_path, "/content/drive/MyDrive/SemiSL/Code/PICAI_SSL/Basecode/Datasets/picai/data_split", split='train_unlab', reverse=True, logging=logging)
+    trainset_unlab_b = PICAIDataset(train_data_path, "/content/drive/MyDrive/SemiSL/Code/SSL_Project/PICAI_SSL/Datasets/picai/data_split", split='train_unlab', reverse=True, logging=logging)
     unlab_loader_b = DataLoader(trainset_unlab_b, batch_size=c_batch_size, shuffle=False, num_workers=0, drop_last=True)
 
 
@@ -475,7 +475,7 @@ if __name__ == "__main__":
             os.makedirs(snapshot_path)
         if os.path.exists(snapshot_path + '/code'):
             shutil.rmtree(snapshot_path + '/code')
-    shutil.copy('/content/drive/MyDrive/SemiSL/Code/PICAI_SSL/Basecode/PICAI_train.py', self_snapshot_path)
+    shutil.copy('/content/drive/MyDrive/SemiSL/Code/SSL_Project/PICAI_SSL/PICAI_train.py', self_snapshot_path)
     # -- Pre-Training
     logging.basicConfig(filename=pre_snapshot_path + "/log.txt", level=logging.INFO,
                         format='[%(asctime)s.%(msecs)03d] %(message)s', datefmt='%H:%M:%S')
