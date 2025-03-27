@@ -114,7 +114,7 @@ class ResVNet(nn.Module):
         x8_up = self._resize_and_add(x8_up, x1)
 
         outputs = [branch(x8_up) for branch in self.branchs]
-        # outputs.append(x6)  # x6 may be used for auxiliary loss like contrastive or VAT
+        outputs.append(x6)  # x6 may be used for auxiliary loss like contrastive or VAT
         return outputs
 
     def forward(self, x, turnoff_drop=False):
