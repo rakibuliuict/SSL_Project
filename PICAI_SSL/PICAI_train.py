@@ -1,7 +1,7 @@
-from asyncore import write
+# from asyncore import write
 # import imp
 import os
-from sre_parse import SPECIAL_CHARS
+# from sre_parse import SPECIAL_CHARS
 import sys
 from xml.etree.ElementInclude import default_loader
 from tqdm import tqdm
