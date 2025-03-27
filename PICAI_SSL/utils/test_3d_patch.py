@@ -138,8 +138,4 @@ def test_all_case_plus(model1, model2, image_list, num_classes, patch_size=(256,
     print('Average metrics: {}'.format(avg_metric))
     return avg_metric
 
-def test_single_case(model, image, stride_xy, stride_z, patch_size, num_classes=2):
-    return test_single_case_mean(model, model, image, stride_xy, stride_z, patch_size, num_classes)
 
-def test_single_case_plus(model1, model2, image, stride_xy, stride_z, patch_size, num_classes=2):
-    return test_single_case_mean(model1, model2, image, stride_xy, stride_z, patch_size, num_classes)
