@@ -5,76 +5,145 @@ import contextlib
 import pdb
 import numpy as np
 
+def to_one_hot(tensor, n_classes):
+    """
+    Convert a tensor of shape (N, 1, D, H, W) to one-hot encoding of shape (N, C, D, H, W)
+    """
+    assert tensor.max().item() < n_classes, f'Invalid class label found: max={tensor.max().item()} >= {n_classes}'
+    assert tensor.min().item() >= 0, f'Invalid class label found: min={tensor.min().item()} < 0'
+
+    size = list(tensor.size())
+    assert size[1] == 1, "Input tensor should have shape [N, 1, D, H, W]"
+    size[1] = n_classes
+    one_hot = torch.zeros(*size, device=tensor.device)
+    one_hot.scatter_(1, tensor, 1)
+    return one_hot
+
+
+def get_probability(logits):
+    """
+    Apply softmax or sigmoid to get prediction probabilities from raw logits.
+    """
+    if logits.size(1) > 1:
+        pred = F.softmax(logits, dim=1)
+        nclass = logits.size(1)
+    else:
+        pred = torch.sigmoid(logits)
+        pred = torch.cat([1 - pred, pred], dim=1)  # convert to 2-class format
+        nclass = 2
+    return pred, nclass
+
+
 class mask_DiceLoss(nn.Module):
     def __init__(self, nclass, class_weights=None, smooth=1e-5):
         super(mask_DiceLoss, self).__init__()
         self.smooth = smooth
         if class_weights is None:
-            # default weight is all 1
-            self.class_weights = nn.Parameter(torch.ones((1, nclass)).type(torch.float32), requires_grad=False)
+            self.class_weights = nn.Parameter(torch.ones((1, nclass), dtype=torch.float32), requires_grad=False)
         else:
-            class_weights = np.array(class_weights)
-            assert nclass == class_weights.shape[0]
-            self.class_weights = nn.Parameter(torch.tensor(class_weights, dtype=torch.float32), requires_grad=False)
-
-    def prob_forward(self, pred, target, mask=None):
-        size = pred.size()
-        N, nclass = size[0], size[1]
-        # N x C x H x W
-        pred_one_hot = pred.view(N, nclass, -1)
-        target = target.view(N, 1, -1)
-        target_one_hot = to_one_hot(target.type(torch.long), nclass).type(torch.float32)
-
-        # N x C x H x W
-        inter = pred_one_hot * target_one_hot
-        union = pred_one_hot + target_one_hot
-
-        if mask is not None:
-            mask = mask.view(N, 1, -1)
-            inter = (inter.view(N, nclass, -1) * mask).sum(2)
-            union = (union.view(N, nclass, -1) * mask).sum(2)
-        else:
-            # N x C
-            inter = inter.view(N, nclass, -1).sum(2)
-            union = union.view(N, nclass, -1).sum(2)
-
-        # smooth to prevent overfitting
-        # [https://github.com/pytorch/pytorch/issues/1249]
-        # NxC
-        dice = (2 * inter + self.smooth) / (union + self.smooth)
-        return 1 - dice.mean()
+            class_weights = torch.tensor(class_weights, dtype=torch.float32)
+            assert nclass == class_weights.numel()
+            self.class_weights = nn.Parameter(class_weights.unsqueeze(0), requires_grad=False)
 
     def forward(self, logits, target, mask=None):
-        size = logits.size()
-        N, nclass = size[0], size[1]
+        """
+        logits: [N, C, D, H, W]
+        target: [N, D, H, W] or [N, 1, D, H, W]
+        mask:   [N, 1, D, H, W] or None
+        """
+        N, C, D, H, W = logits.shape
+        pred, _ = get_probability(logits)  # shape: [N, C, D, H, W]
 
-        logits = logits.view(N, nclass, -1)
-        target = target.view(N, 1, -1)
+        # Ensure target shape is [N, 1, D, H, W]
+        if target.dim() == 4:
+            target = target.unsqueeze(1)
+        target_one_hot = to_one_hot(target, C).float()
 
-        pred, nclass = get_probability(logits)
-
-        # N x C x H x W
-        pred_one_hot = pred
-        target_one_hot = to_one_hot(target.type(torch.long), nclass).type(torch.float32)
-
-        # N x C x H x W
-        inter = pred_one_hot * target_one_hot
-        union = pred_one_hot + target_one_hot
+        inter = pred * target_one_hot
+        union = pred + target_one_hot
 
         if mask is not None:
-            mask = mask.view(N, 1, -1)
-            inter = (inter.view(N, nclass, -1) * mask).sum(2)
-            union = (union.view(N, nclass, -1) * mask).sum(2)
+            if mask.dim() == 4:
+                mask = mask.unsqueeze(1)
+            inter = (inter * mask).view(N, C, -1).sum(dim=2)
+            union = (union * mask).view(N, C, -1).sum(dim=2)
         else:
-            # N x C
-            inter = inter.view(N, nclass, -1).sum(2)
-            union = union.view(N, nclass, -1).sum(2)
+            inter = inter.view(N, C, -1).sum(dim=2)
+            union = union.view(N, C, -1).sum(dim=2)
 
-        # smooth to prevent overfitting
-        # [https://github.com/pytorch/pytorch/issues/1249]
-        # NxC
         dice = (2 * inter + self.smooth) / (union + self.smooth)
-        return 1 - dice.mean()
+        loss = 1 - dice.mean()
+        return loss
+# class mask_DiceLoss(nn.Module):
+#     def __init__(self, nclass, class_weights=None, smooth=1e-5):
+#         super(mask_DiceLoss, self).__init__()
+#         self.smooth = smooth
+#         if class_weights is None:
+#             # default weight is all 1
+#             self.class_weights = nn.Parameter(torch.ones((1, nclass)).type(torch.float32), requires_grad=False)
+#         else:
+#             class_weights = np.array(class_weights)
+#             assert nclass == class_weights.shape[0]
+#             self.class_weights = nn.Parameter(torch.tensor(class_weights, dtype=torch.float32), requires_grad=False)
+
+#     def prob_forward(self, pred, target, mask=None):
+#         size = pred.size()
+#         N, nclass = size[0], size[1]
+#         # N x C x H x W
+#         pred_one_hot = pred.view(N, nclass, -1)
+#         target = target.view(N, 1, -1)
+#         target_one_hot = to_one_hot(target.type(torch.long), nclass).type(torch.float32)
+
+#         # N x C x H x W
+#         inter = pred_one_hot * target_one_hot
+#         union = pred_one_hot + target_one_hot
+
+#         if mask is not None:
+#             mask = mask.view(N, 1, -1)
+#             inter = (inter.view(N, nclass, -1) * mask).sum(2)
+#             union = (union.view(N, nclass, -1) * mask).sum(2)
+#         else:
+#             # N x C
+#             inter = inter.view(N, nclass, -1).sum(2)
+#             union = union.view(N, nclass, -1).sum(2)
+
+#         # smooth to prevent overfitting
+#         # [https://github.com/pytorch/pytorch/issues/1249]
+#         # NxC
+#         dice = (2 * inter + self.smooth) / (union + self.smooth)
+#         return 1 - dice.mean()
+
+#     def forward(self, logits, target, mask=None):
+#         size = logits.size()
+#         N, nclass = size[0], size[1]
+
+#         logits = logits.view(N, nclass, -1)
+#         target = target.view(N, 1, -1)
+
+#         pred, nclass = get_probability(logits)
+
+#         # N x C x H x W
+#         pred_one_hot = pred
+#         target_one_hot = to_one_hot(target.type(torch.long), nclass).type(torch.float32)
+
+#         # N x C x H x W
+#         inter = pred_one_hot * target_one_hot
+#         union = pred_one_hot + target_one_hot
+
+#         if mask is not None:
+#             mask = mask.view(N, 1, -1)
+#             inter = (inter.view(N, nclass, -1) * mask).sum(2)
+#             union = (union.view(N, nclass, -1) * mask).sum(2)
+#         else:
+#             # N x C
+#             inter = inter.view(N, nclass, -1).sum(2)
+#             union = union.view(N, nclass, -1).sum(2)
+
+#         # smooth to prevent overfitting
+#         # [https://github.com/pytorch/pytorch/issues/1249]
+#         # NxC
+#         dice = (2 * inter + self.smooth) / (union + self.smooth)
+#         return 1 - dice.mean()
 
 class DiceLoss(nn.Module):
     def __init__(self, n_classes):
