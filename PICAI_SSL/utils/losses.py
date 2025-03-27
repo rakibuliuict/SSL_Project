@@ -61,7 +61,7 @@ class mask_DiceLoss(nn.Module):
             print(f"target shape: {target.shape}, logits shape: {logits.shape}")
             raise e
 
-        print(f"[DEBUG] pred shape: {pred.shape}, target_one_hot shape: {target_one_hot.shape}")
+        # print(f"[DEBUG] pred shape: {pred.shape}, target_one_hot shape: {target_one_hot.shape}")
 
         # Compute Dice loss
         inter = pred * target_one_hot
