@@ -70,27 +70,53 @@ class PICAIDataset(Dataset):
         return image_.float(), label_.long()
 
 
+# class CenterCrop(object):
+#     def __init__(self, output_size):
+#         self.output_size = output_size
+
+#     def __call__(self, samples):
+#         image, label = samples  # image: [C, H, W, D], label: [H, W, D]
+#         _, H, W, D = image.shape
+#         oH, oW, oD = self.output_size
+
+#         start_h = max((H - oH) // 2, 0)
+#         start_w = max((W - oW) // 2, 0)
+#         start_d = max((D - oD) // 2, 0)
+
+#         end_h = start_h + oH
+#         end_w = start_w + oW
+#         end_d = start_d + oD
+
+#         image_cropped = image[:, start_h:end_h, start_w:end_w, start_d:end_d]
+#         label_cropped = label[start_h:end_h, start_w:end_w, start_d:end_d]
+
+#         return image_cropped, label_cropped
+
 class CenterCrop(object):
     def __init__(self, output_size):
-        self.output_size = output_size
+        self.output_size = output_size  # (H, W, D)
 
     def __call__(self, samples):
         image, label = samples  # image: [C, H, W, D], label: [H, W, D]
         _, H, W, D = image.shape
         oH, oW, oD = self.output_size
 
+        # Pad depth from D=20 to D=32
+        if D < oD:
+            pad_d = oD - D
+            image = np.pad(image, ((0, 0), (0, 0), (0, 0), (pad_d // 2, pad_d - pad_d // 2)), mode='constant')
+            label = np.pad(label, ((0, 0), (0, 0), (pad_d // 2, pad_d - pad_d // 2)), mode='constant')
+            D = oD
+
         start_h = max((H - oH) // 2, 0)
         start_w = max((W - oW) // 2, 0)
         start_d = max((D - oD) // 2, 0)
 
-        end_h = start_h + oH
-        end_w = start_w + oW
-        end_d = start_d + oD
-
-        image_cropped = image[:, start_h:end_h, start_w:end_w, start_d:end_d]
-        label_cropped = label[start_h:end_h, start_w:end_w, start_d:end_d]
+        image_cropped = image[:, start_h:start_h + oH, start_w:start_w + oW, start_d:start_d + oD]
+        label_cropped = label[start_h:start_h + oH, start_w:start_w + oW, start_d:start_d + oD]
 
         return image_cropped, label_cropped
+
 
 
 class RandomCrop(object):
