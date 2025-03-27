@@ -45,7 +45,7 @@ parser.add_argument('--pre_max_iteration', type=int, default=2000, help='maximum
 parser.add_argument('--self_max_iteration', type=int, default=15000, help='maximum self-train iteration to train')
 parser.add_argument('--max_samples', type=int, default=80, help='maximum samples to train')
 parser.add_argument('--labeled_bs', type=int, default=4, help='batch_size of labeled data per gpu')
-parser.add_argument('--batch_size', type=int, default=8, help='batch_size per gpu')
+parser.add_argument('--batch_size', type=int, default=4, help='batch_size per gpu')
 parser.add_argument('--base_lr', type=float, default=1e-3, help='maximum epoch number to train')
 parser.add_argument('--deterministic', type=int, default=1, help='whether use deterministic training')
 parser.add_argument('--labelnum', type=int, default=8, help='trained samples')
