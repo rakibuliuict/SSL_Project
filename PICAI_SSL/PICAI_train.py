@@ -247,6 +247,12 @@ def pre_train(args, snapshot_path):
             loss = (loss_ce + loss_dice) / 2
 
             outputs2, _ = model2(volume_batch)
+
+            outputs2 = F.interpolate(outputs2, size=label_batch.shape[1:], mode='trilinear', align_corners=True)
+            # loss_ce2 = F.cross_entropy(outputs2, label_batch.long())
+
+
+
             loss_ce2 = F.cross_entropy(outputs2, label_batch.float())
             loss_dice2 = DICE(outputs2, label_batch)
             loss2 = (loss_ce2 + loss_dice2) / 2
