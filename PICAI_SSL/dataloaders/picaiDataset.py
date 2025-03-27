@@ -7,7 +7,6 @@ from torch.utils.data.sampler import Sampler
 from torchvision.transforms import Compose
 import logging
 
-
 class PICAIDataset(Dataset):
     """ PICAI Dataset with multi-modal MRI and segmentation mask """
 
@@ -59,38 +58,20 @@ class PICAIDataset(Dataset):
             hbv = h5f['image']['hbv'][:]
             seg = h5f['label']['seg'][:].astype(np.float32)
 
-        image = np.stack([t2w, adc, hbv], axis=0)  # Shape: [3, H, W, D]
-        samples = image, seg
+        image = np.stack([t2w, adc, hbv], axis=0)  # [3, H, W, D]
+        samples = (image, seg)
 
         if self.transform:
             image_, label_ = self.transform(samples)
         else:
             image_, label_ = image, seg
 
+        # Convert to [B, C, D, H, W] format expected by model
+        image_ = image_.permute(0, 3, 1, 2)  # [3, D, H, W]
+        label_ = label_.permute(2, 0, 1).unsqueeze(0)  # [1, D, H, W]
+
         return image_.float(), label_.long()
 
-
-# class CenterCrop(object):
-#     def __init__(self, output_size):
-#         self.output_size = output_size
-
-#     def __call__(self, samples):
-#         image, label = samples  # image: [C, H, W, D], label: [H, W, D]
-#         _, H, W, D = image.shape
-#         oH, oW, oD = self.output_size
-
-#         start_h = max((H - oH) // 2, 0)
-#         start_w = max((W - oW) // 2, 0)
-#         start_d = max((D - oD) // 2, 0)
-
-#         end_h = start_h + oH
-#         end_w = start_w + oW
-#         end_d = start_d + oD
-
-#         image_cropped = image[:, start_h:end_h, start_w:end_w, start_d:end_d]
-#         label_cropped = label[start_h:end_h, start_w:end_w, start_d:end_d]
-
-#         return image_cropped, label_cropped
 
 class CenterCrop(object):
     def __init__(self, output_size):
@@ -101,7 +82,6 @@ class CenterCrop(object):
         _, H, W, D = image.shape
         oH, oW, oD = self.output_size
 
-        # Pad depth from D=20 to D=32
         if D < oD:
             pad_d = oD - D
             image = np.pad(image, ((0, 0), (0, 0), (0, 0), (pad_d // 2, pad_d - pad_d // 2)), mode='constant')
@@ -118,7 +98,6 @@ class CenterCrop(object):
         return image_cropped, label_cropped
 
 
-
 class RandomCrop(object):
     def __init__(self, output_size):
         self.output_size = output_size
@@ -128,63 +107,52 @@ class RandomCrop(object):
         _, H, W, D = image.shape
         oH, oW, oD = self.output_size
 
-        if H < oH or W < oW or D < oD:
-            pad_h = max(oH - H, 0)
-            pad_w = max(oW - W, 0)
-            pad_d = max(oD - D, 0)
+        pad_h = max(oH - H, 0)
+        pad_w = max(oW - W, 0)
+        pad_d = max(oD - D, 0)
 
-            pad = (
-                (0, 0),  # channel
+        if pad_h > 0 or pad_w > 0 or pad_d > 0:
+            image = np.pad(image, (
+                (0, 0),
                 (pad_h // 2, pad_h - pad_h // 2),
                 (pad_w // 2, pad_w - pad_w // 2),
-                (pad_d // 2, pad_d - pad_d // 2)
-            )
-            image = np.pad(image, pad, mode='constant', constant_values=0)
+                (pad_d // 2, pad_d - pad_d // 2)), mode='constant')
             label = np.pad(label, (
                 (pad_h // 2, pad_h - pad_h // 2),
                 (pad_w // 2, pad_w - pad_w // 2),
-                (pad_d // 2, pad_d - pad_d // 2)
-            ), mode='constant', constant_values=0)
+                (pad_d // 2, pad_d - pad_d // 2)), mode='constant')
 
-            _, H, W, D = image.shape  # Update new shape
+            _, H, W, D = image.shape
 
         start_h = np.random.randint(0, H - oH + 1)
         start_w = np.random.randint(0, W - oW + 1)
         start_d = np.random.randint(0, D - oD + 1)
 
-        end_h = start_h + oH
-        end_w = start_w + oW
-        end_d = start_d + oD
-
-        image_cropped = image[:, start_h:end_h, start_w:end_w, start_d:end_d]
-        label_cropped = label[start_h:end_h, start_w:end_w, start_d:end_d]
+        image_cropped = image[:, start_h:start_h + oH, start_w:start_w + oW, start_d:start_d + oD]
+        label_cropped = label[start_h:start_h + oH, start_w:start_w + oW, start_d:start_d + oD]
 
         return image_cropped, label_cropped
-
 
 
 class ToTensor(object):
     def __call__(self, sample):
         image = sample[0].astype(np.float32)  # [3, H, W, D]
         label = sample[1].astype(np.float32)  # [H, W, D]
-        return [torch.from_numpy(image), torch.from_numpy(label)]
+        return torch.from_numpy(image), torch.from_numpy(label)
 
 
 if __name__ == '__main__':
     data_dir = '/content/drive/MyDrive/SemiSL/Dataset/PICAI_dataset'
     list_dir = '/content/drive/MyDrive/SemiSL/Code/SSL_Project/PICAI_SSL/Datasets/picai/data_split'
 
-    labset = PICAIDataset(data_dir, list_dir, split='lab')
-    unlabset = PICAIDataset(data_dir, list_dir, split='unlab')
-    trainset = PICAIDataset(data_dir, list_dir, split='train')
+    labset = PICAIDataset(data_dir, list_dir, split='train_lab')
+    unlabset = PICAIDataset(data_dir, list_dir, split='train_unlab')
     testset = PICAIDataset(data_dir, list_dir, split='test')
 
     lab_sample = labset[0]
     unlab_sample = unlabset[0]
-    train_sample = trainset[0]
     test_sample = testset[0]
 
     print(len(labset), lab_sample[0].shape, lab_sample[1].shape)
     print(len(unlabset), unlab_sample[0].shape, unlab_sample[1].shape)
-    print(len(trainset), train_sample[0].shape, train_sample[1].shape)
     print(len(testset), test_sample[0].shape, test_sample[1].shape)
