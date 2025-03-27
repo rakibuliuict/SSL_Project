@@ -40,7 +40,18 @@ class mask_DiceLoss(nn.Module):
         target: [N, D, H, W]
         mask:   [N, D, H, W] or [N, 1, D, H, W]
         """
-        N, C, D, H, W = logits.shape
+        # N, C, D, H, W = logits.shape
+
+        logits_shape = logits.shape
+        if len(logits_shape) == 5:
+            N, C, D, H, W = logits_shape
+        elif len(logits_shape) == 4:
+            N, C, H, W = logits_shape
+            D = 1  # Assume a dummy depth dimension
+            logits = logits.unsqueeze(2)  # shape becomes [N, C, 1, H, W]
+        else:
+            raise ValueError(f"Unsupported input shape: {logits_shape}")
+
         pred, _ = get_probability(logits)
 
         if target.dim() == 4:
