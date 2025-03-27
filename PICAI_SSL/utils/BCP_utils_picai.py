@@ -45,15 +45,37 @@ def random_mask(img):
                 loss_mask[:, w:w+mask_size_x, h:h+mask_size_y, z:z+mask_size_z] = 0
     return mask.long(), loss_mask.long()
 
-def concate_mask(img):
-    batch_size, channel, img_x, img_y, img_z = img.shape[0],img.shape[1],img.shape[2],img.shape[3],img.shape[4]
+# def concate_mask(img):
+#     batch_size, channel, img_x, img_y, img_z = img.shape[0],img.shape[1],img.shape[2],img.shape[3],img.shape[4]
+#     loss_mask = torch.ones(batch_size, img_x, img_y, img_z).cuda()
+#     mask = torch.ones(img_x, img_y, img_z).cuda()
+#     z_length = int(img_z * 8 / 27)
+#     z = np.random.randint(0, img_z - z_length -1)
+#     mask[:, :, z:z+z_length] = 0
+#     loss_mask[:, :, :, z:z+z_length] = 0
+#     return mask.long(), loss_mask.long()
+
+def context_mask(img, mask_ratio):
+    batch_size, channel, img_x, img_y, img_z = img.shape
     loss_mask = torch.ones(batch_size, img_x, img_y, img_z).cuda()
     mask = torch.ones(img_x, img_y, img_z).cuda()
-    z_length = int(img_z * 8 / 27)
-    z = np.random.randint(0, img_z - z_length -1)
-    mask[:, :, z:z+z_length] = 0
-    loss_mask[:, :, :, z:z+z_length] = 0
+    patch_pixel_x = int(img_x * mask_ratio)
+    patch_pixel_y = int(img_y * mask_ratio)
+    patch_pixel_z = int(img_z * mask_ratio)
+
+    # Ensure safe bounds
+    max_w = max(img_x - patch_pixel_x, 1)
+    max_h = max(img_y - patch_pixel_y, 1)
+    max_z = max(img_z - patch_pixel_z, 1)
+
+    w = np.random.randint(0, max_w)
+    h = np.random.randint(0, max_h)
+    z = np.random.randint(0, max_z)
+
+    mask[w:w+patch_pixel_x, h:h+patch_pixel_y, z:z+patch_pixel_z] = 0
+    loss_mask[:, w:w+patch_pixel_x, h:h+patch_pixel_y, z:z+patch_pixel_z] = 0
     return mask.long(), loss_mask.long()
+
 
 def mix_loss(net3_output, img_l, patch_l, mask, l_weight=1.0, u_weight=0.5, unlab=False):
     img_l, patch_l = img_l.type(torch.int64), patch_l.type(torch.int64)
