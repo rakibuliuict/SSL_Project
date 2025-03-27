@@ -17,15 +17,17 @@ def to_one_hot(tensor, n_classes):
 def get_probability(logits):
     """
     Apply softmax or sigmoid to get prediction probabilities from raw logits.
+    Assumes input logits are [N, C, D, H, W]
     """
     if logits.size(1) > 1:
         pred = F.softmax(logits, dim=1)
         nclass = logits.size(1)
     else:
         pred = torch.sigmoid(logits)
-        pred = torch.cat([1 - pred, pred], dim=1)  # convert to 2-class format
+        pred = torch.cat([1 - pred, pred], dim=1)
         nclass = 2
     return pred, nclass
+
 
 
 class mask_DiceLoss(nn.Module):
@@ -49,6 +51,9 @@ class mask_DiceLoss(nn.Module):
 
         if target.dim() == 4:
             target = target.unsqueeze(1)
+        
+        print(f"pred shape: {pred.shape}, target_one_hot shape: {target_one_hot.shape}")
+
 
         target_one_hot = to_one_hot(target, C).float()
         assert pred.shape == target_one_hot.shape, f"Shape mismatch: {pred.shape} vs {target_one_hot.shape}"
