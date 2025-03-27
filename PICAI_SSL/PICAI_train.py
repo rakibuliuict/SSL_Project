@@ -159,7 +159,7 @@ if args.deterministic:
     random.seed(args.seed)
     np.random.seed(args.seed)
 
-patch_size = (256, 256, 20)
+patch_size = (256, 256, 16)
 num_classes = 1
 
 
