@@ -22,7 +22,7 @@ def context_mask(img, mask_ratio):
     patch_pixel_x, patch_pixel_y, patch_pixel_z = int(img_x*mask_ratio), int(img_y*mask_ratio), int(img_z*mask_ratio)
     w = np.random.randint(0, 256 - patch_pixel_x)
     h = np.random.randint(0, 256 - patch_pixel_y)
-    z = np.random.randint(0, 20 - patch_pixel_z)
+    z = np.random.randint(0, 32 - patch_pixel_z)
     mask[w:w+patch_pixel_x, h:h+patch_pixel_y, z:z+patch_pixel_z] = 0
     loss_mask[:, w:w+patch_pixel_x, h:h+patch_pixel_y, z:z+patch_pixel_z] = 0
     return mask.long(), loss_mask.long()
