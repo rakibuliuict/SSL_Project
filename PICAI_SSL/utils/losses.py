@@ -28,8 +28,6 @@ def get_probability(logits):
         nclass = 2
     return pred, nclass
 
-
-
 class mask_DiceLoss(nn.Module):
     def __init__(self, nclass, smooth=1e-5):
         super(mask_DiceLoss, self).__init__()
@@ -37,27 +35,35 @@ class mask_DiceLoss(nn.Module):
         self.smooth = smooth
 
     def forward(self, logits, target, mask=None):
-        logits_shape = logits.shape
-        if len(logits_shape) == 5:
-            N, C, D, H, W = logits_shape
-        elif len(logits_shape) == 4:
-            logits = logits.unsqueeze(2)
-            target = target.unsqueeze(1)
-            N, C, D, H, W = logits.shape
-        else:
-            raise ValueError(f"Unsupported input shape: {logits_shape}")
+        """
+        logits: [N, C, D, H, W]
+        target: [N, D, H, W]
+        mask:   [N, D, H, W] or [N, 1, D, H, W]
+        """
+        if logits.dim() == 4:
+            # Reshape 2D input to 3D shape for consistency
+            logits = logits.unsqueeze(2)  # [N, C, 1, H, W]
+            target = target.unsqueeze(1)  # [N, 1, H, W] → [N, 1, 1, H, W]
+        elif logits.dim() != 5:
+            raise ValueError(f"Unsupported input shape: {logits.shape}")
+
+        N, C, D, H, W = logits.shape
 
         pred, _ = get_probability(logits)
 
         if target.dim() == 4:
-            target = target.unsqueeze(1)
-        
-        print(f"pred shape: {pred.shape}, target_one_hot shape: {target_one_hot.shape}")
+            target = target.unsqueeze(1)  # [N, 1, D, H, W]
 
+        try:
+            target_one_hot = to_one_hot(target, C).float()
+        except Exception as e:
+            print(f"[to_one_hot] error: {e}")
+            print(f"target shape: {target.shape}, logits shape: {logits.shape}")
+            raise e
 
-        target_one_hot = to_one_hot(target, C).float()
-        assert pred.shape == target_one_hot.shape, f"Shape mismatch: {pred.shape} vs {target_one_hot.shape}"
+        print(f"[DEBUG] pred shape: {pred.shape}, target_one_hot shape: {target_one_hot.shape}")
 
+        # Compute Dice loss
         inter = pred * target_one_hot
         union = pred + target_one_hot
 
@@ -73,6 +79,11 @@ class mask_DiceLoss(nn.Module):
         dice = (2 * inter + self.smooth) / (union + self.smooth)
         loss = 1 - dice.mean()
         return loss
+
+
+
+
+
 
 
 class softDiceLoss(nn.Module):
