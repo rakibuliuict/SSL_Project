@@ -45,35 +45,36 @@ class mask_DiceLoss(nn.Module):
             assert nclass == class_weights.numel()
             self.class_weights = nn.Parameter(class_weights.unsqueeze(0), requires_grad=False)
 
-    def forward(self, logits, target, mask=None):
-        """
-        logits: [N, C, D, H, W]
-        target: [N, D, H, W] or [N, 1, D, H, W]
-        mask:   [N, 1, D, H, W] or None
-        """
-        N, C, D, H, W = logits.shape
-        pred, _ = get_probability(logits)  # shape: [N, C, D, H, W]
+def forward(self, logits, target, mask=None):
+    """
+    logits: [N, C, H, W] or [N, C, D, H, W]
+    target: [N, H, W] or [N, D, H, W] or with channel dim [N, 1, D, H, W]
+    mask:   same as target or None
+    """
+    N, C = logits.size(0), logits.size(1)
+    pred, _ = get_probability(logits)  # shape: [N, C, ...]
 
-        # Ensure target shape is [N, 1, D, H, W]
-        if target.dim() == 4:
-            target = target.unsqueeze(1)
-        target_one_hot = to_one_hot(target, C).float()
+    # Ensure target shape is [N, 1, ...]
+    if target.dim() == logits.dim() - 1:
+        target = target.unsqueeze(1)
+    target_one_hot = to_one_hot(target, C).float()
 
-        inter = pred * target_one_hot
-        union = pred + target_one_hot
+    inter = pred * target_one_hot
+    union = pred + target_one_hot
 
-        if mask is not None:
-            if mask.dim() == 4:
-                mask = mask.unsqueeze(1)
-            inter = (inter * mask).view(N, C, -1).sum(dim=2)
-            union = (union * mask).view(N, C, -1).sum(dim=2)
-        else:
-            inter = inter.view(N, C, -1).sum(dim=2)
-            union = union.view(N, C, -1).sum(dim=2)
+    if mask is not None:
+        if mask.dim() == logits.dim() - 1:
+            mask = mask.unsqueeze(1)
+        inter = (inter * mask).view(N, C, -1).sum(dim=2)
+        union = (union * mask).view(N, C, -1).sum(dim=2)
+    else:
+        inter = inter.view(N, C, -1).sum(dim=2)
+        union = union.view(N, C, -1).sum(dim=2)
 
-        dice = (2 * inter + self.smooth) / (union + self.smooth)
-        loss = 1 - dice.mean()
-        return loss
+    dice = (2 * inter + self.smooth) / (union + self.smooth)
+    loss = 1 - dice.mean()
+    return loss
+
 # class mask_DiceLoss(nn.Module):
 #     def __init__(self, nclass, class_weights=None, smooth=1e-5):
 #         super(mask_DiceLoss, self).__init__()
