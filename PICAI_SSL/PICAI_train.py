@@ -371,8 +371,8 @@ def self_train(args, pre_snapshot_path, self_snapshot_path):
             loss_l = mix_loss(outputs_l, plab_a.long(), lab_b, loss_mask, u_weight=args.u_weight, unlab=True)
             loss_u = mix_loss(outputs_u, lab_a, plab_b.long(), loss_mask, u_weight=args.u_weight)
 
-            outputs_l_2, = model2(mixl_img)
-            outputs_u_2, = model2(mixu_img)
+            outputs_l_2, _ = model2(mixl_img)
+            outputs_u_2, _ = model2(mixu_img)
             loss_l_2 = mix_loss(outputs_l_2, plab_a.long(), lab_b, loss_mask, u_weight=args.u_weight, unlab=True)
             loss_u_2 = mix_loss(outputs_u_2, lab_a, plab_b.long(), loss_mask, u_weight=args.u_weight)
 
