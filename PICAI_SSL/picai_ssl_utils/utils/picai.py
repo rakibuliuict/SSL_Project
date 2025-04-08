@@ -4,7 +4,7 @@ import numpy as np
 import h5py
 
 # Path to the dataset root
-base_dir = "/content/drive/MyDrive/SemiSL/Dataset/PICAI_dataset"  #  Update if needed
+base_dir = r"E:\Dataset\PICAI\workdir\workdir\csPCa_patients\PICAI_dataset"  #  Update if needed
 
 # Loop through each patient folder
 for patient_id in os.listdir(base_dir):
